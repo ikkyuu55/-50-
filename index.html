@@ -64,7 +64,7 @@ td{
 
 /* 日付 */
 .date-input{
-  width:100%;
+  width:80%;
   box-sizing:border-box;
   margin-bottom:4px;
   font-size:13px;
@@ -142,6 +142,30 @@ textarea{
   text-align:right;
   cursor:pointer;
 }
+  /* ===== スマホ表示時：表の文字サイズ底上げ ===== */
+@media (max-width: 600px){
+
+  /* かな（あ・か・さ…） */
+  .kana{
+    font-size:20px;   /* ← ルール文字より大 */
+  }
+
+  /* 作者名 */
+  .author-input{
+    font-size:16px;   /* ← 最低でも16px */
+  }
+
+  /* 日付 */
+  .date-input{
+    font-size:14px;   /* ← ルール文字と同等 */
+  }
+
+  /* メモボタン */
+  .memo-btn{
+    font-size:14px;
+  }
+}
+
 </style>
 </head>
 
