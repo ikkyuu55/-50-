@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>作者名 50音制覇チャレンジ</title>
+  <style>
+    body {
+      font-family: "メイリオ",Meiryo,system-ui,sans-serif;
+      background: #f7f7f7;
+      padding: 20px;
+    }
+    h1 {
+      text-align: center;
+    }
+    .rules {
+      max-width: 900px;
+      margin: 0 auto 20px;
+      background: #fff;
+      padding: 12px 16px;
+      border-radius: 8px;
+      font-size: 14px;
+    }
+    table {
+      border-collapse: collapse;
+      margin: auto;
+    }
+    td {
+      border: 1px solid #ccc;
+      width: 140px;
+      height: 230px;
+      vertical-align: top;
+      padding: 6px;
+      transition: background-color 0.3s;
+    }
+    .kana {
+      font-size: 20px;
+      font-weight: bold;
+      text-align: center;
+      margin-bottom: 4px;
+    }
+    input[type="text"],input[type="date"] {
+      width: 100%;
+      box-sizing: border-box;
+      margin-bottom: 4px;
+      font-size: 13px;
+    }
+    img {
+      max-width: 100%;
+      max-height: 80px;
+      display: block;
+      margin: 4px auto;
+    }
+    input[type="file"] {
+      width: 100%;
+      font-size: 12px;
+    }
+  </style>
+</head>
+<body>
+
+<h1>作者名 50音制覇チャレンジ</h1>
+
+<div class="rules">
+  <strong>ルール</strong><br>
+  ・どこからでもOK！<br>
+  ・日本文学・海外文学なんでもOK！<br>
+  ・読み終わったら表紙を撮ってLINEに！<br>
+  ・外国人作家はファミリーネームで分類！
+</div>
+
+<table id="gojuon"></table>
+
+<script>
+const colors=["#ffecec","#fff5cc","#e8f7e8","#e8f1fb","#f3e8fb"];
+
+const gojuon=[
+  ["あ","い","う","え","お"],["か","き","く","け","こ"],["さ","し","す","せ","そ"],["た","ち","つ","て","と"],["な","に","ぬ","ね","の"],["は","ひ","ふ","へ","ほ"],["ま","み","む","め","も"],["や","","ゆ","","よ"],["ら","り","る","れ","ろ"],["わ","","を","","ん"]
+];
+
+const table=document.getElementById("gojuon");
+
+gojuon.forEach((row,rowIndex)=> {
+  const tr=document.createElement("tr");
+
+  row.forEach(char=> {
+    const td=document.createElement("td");
+    td.style.backgroundColor=colors[rowIndex % colors.length];
+
+    if(char !==""){
+      const key="gojuon_"+char;
+
+      const kana=document.createElement("div");
+      kana.className="kana";
+      kana.textContent=char;
+
+      const author=document.createElement("input");
+      author.type="text";
+      author.placeholder="作者名";
+      author.value=localStorage.getItem(key+"_author")|| "";
+
+      const date=document.createElement("input");
+      date.type="date";
+      date.value=localStorage.getItem(key+"_date")|| "";
+
+      const img=document.createElement("img");
+      const savedImg=localStorage.getItem(key+"_img");
+      if(savedImg)img.src=savedImg;
+
+      const file=document.createElement("input");
+      file.type="file";
+      file.accept="image/*";
+
+      function updateFilled(){
+        if(author.value || date.value || img.src){
+          td.style.backgroundColor="#ffddee";
+        } else {
+          td.style.backgroundColor=colors[rowIndex % colors.length];
+        }
+      }
+
+      author.oninput=()=> {
+        localStorage.setItem(key+"_author",author.value);
+        updateFilled();
+      };
+
+      date.oninput=()=> {
+        localStorage.setItem(key+"_date",date.value);
+        updateFilled();
+      };
+
+      file.onchange=()=> {
+        const f=file.files[0];
+        if(!f)return;
+        const reader=new FileReader();
+        reader.onload=()=> {
+          img.src=reader.result;
+          localStorage.setItem(key+"_img",reader.result);
+          updateFilled();
+        };
+        reader.readAsDataURL(f);
+      };
+
+      if(author.value || date.value || savedImg){
+        td.style.backgroundColor="#ffddee";
+      }
+
+      td.appendChild(kana);
+      td.appendChild(author);
+      td.appendChild(date);
+      td.appendChild(img);
+      td.appendChild(file);
+    }
+
+    tr.appendChild(td);
+  });
+
+  table.appendChild(tr);
+});
+</script>
+
+</body>
+</html>
