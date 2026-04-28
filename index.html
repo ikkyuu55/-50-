@@ -6,66 +6,86 @@
 
 <style>
 body{
-  font-family: "メイリオ", Meiryo, system-ui, sans-serif;
+  font-family:"メイリオ", Meiryo, system-ui, sans-serif;
   background:#f4f1ec;
   padding:20px;
 }
-  
+
 h1{
   text-align:center;
+  margin-bottom:6px;
 }
+
 .rules{
-  max-width:900px;
-  margin:0 auto 12px;
+  max-width:980px;
+  margin:0 auto 14px;
   background:#fff;
   padding:12px;
   border-radius:8px;
   font-size:14px;
 }
+
 .progress{
   text-align:center;
   font-weight:bold;
-  margin-bottom:12px;
+  font-size:28px;
+  margin-bottom:14px;
 }
+
 table{
   border-collapse:collapse;
-  margin:auto;
+  margin:0 auto;
+  max-width:980px;
+  width:100%;
 }
+
 td{
   border:1px solid #bbb;
-  width:140px;
-  height:235px;
+  height:270px;
   vertical-align:top;
   padding:6px;
-  transition:background-color 0.3s;
 }
+
 .kana{
   text-align:center;
-  font-size:20px;
+  font-size:22px;
   font-weight:bold;
   margin-bottom:4px;
 }
-input[type="text"],
-input[type="date"]{
+
+/* 作者名 */
+.author-input{
   width:100%;
   box-sizing:border-box;
-  font-size:13px;
+  margin-bottom:2px;
+  font-size:16px;
+  text-align:center;
+}
+
+/* 日付 */
+.date-input{
+  width:100%;
+  box-sizing:border-box;
   margin-bottom:4px;
-  padding:3px;
+  font-size:13px;
+  text-align:center;
 }
-input[type="date"]{
-  appearance:none;
-  -webkit-appearance:none;
-}
+
 img{
   max-width:100%;
-  max-height:80px;
+  max-height:70px;
   display:block;
   margin:4px auto;
 }
-input[type="file"]{
+
+.memo-btn{
   width:100%;
-  font-size:12px;
+  margin-top:4px;
+  padding:6px;
+  border:none;
+  border-radius:6px;
+  background:#e8c7d8;
+  font-size:13px;
 }
 
 /* 本棚カラー */
@@ -74,8 +94,51 @@ input[type="file"]{
 .row2{background:#e6f0e6;}
 .row3{background:#e8edf3;}
 .row4{background:#efe6f3;}
+
 .filled{
-  filter:brightness(0.9);
+  filter:brightness(0.92);
+}
+
+/* ===== モーダル ===== */
+.modal{
+  display:none;
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,0.4);
+  justify-content:center;
+  align-items:center;
+  z-index:10;
+}
+
+.modal-content{
+  background:#fff;
+  width:90%;
+  max-width:420px;
+  padding:16px;
+  border-radius:10px;
+}
+
+.modal h2{
+  text-align:center;
+  font-size:28px;
+  margin:0 0 10px;
+}
+
+.modal input,
+.modal textarea{
+  width:100%;
+  box-sizing:border-box;
+  margin-bottom:6px;
+  font-size:14px;
+}
+
+textarea{
+  min-height:120px;
+}
+
+.close{
+  text-align:right;
+  cursor:pointer;
 }
 </style>
 </head>
@@ -83,6 +146,7 @@ input[type="file"]{
 <body>
 
 <h1>作者名 50音制覇チャレンジ</h1>
+<div class="progress" id="progress"></div>
 
 <div class="rules">
 <strong>ルール</strong><br>
@@ -92,13 +156,24 @@ input[type="file"]{
 ・外国人作家はファミリーネームで分類！
 </div>
 
-<div class="progress" id="progress"></div>
-
 <table id="gojuon"></table>
 
-<script>
-const colors=["row0","row1","row2","row3","row4"];
+<!-- モーダル -->
+<div class="modal" id="modal">
+  <div class="modal-content">
+    <div class="close" id="modalClose">✖ 閉じる</div>
+    <h2 id="modalKana"></h2>
+    <input id="modalAuthor" type="text" placeholder="作者名">
+    <input id="modalDate" type="date">
+    <img id="modalImg">
+    <input id="modalFile" type="file" accept="image/*">
+    <textarea id="modalMemo" placeholder="本の感想・メモ"></textarea>
+  </div>
+</div>
 
+<script>
+/* ===== 定義 ===== */
+const colors=["row0","row1","row2","row3","row4"];
 const gojuon=[
 ["あ","い","う","え","お"],
 ["か","き","く","け","こ"],
@@ -109,101 +184,139 @@ const gojuon=[
 ["ま","み","む","め","も"],
 ["や","","ゆ","","よ"],
 ["ら","り","る","れ","ろ"],
-["わ","を","","","ん"]
+["わ","","を","","ん"]   // ← を を右に移動
 ];
 
 const table=document.getElementById("gojuon");
 const progress=document.getElementById("progress");
 
+const modal=document.getElementById("modal");
+const modalKana=document.getElementById("modalKana");
+const modalAuthor=document.getElementById("modalAuthor");
+const modalDate=document.getElementById("modalDate");
+const modalImg=document.getElementById("modalImg");
+const modalFile=document.getElementById("modalFile");
+const modalMemo=document.getElementById("modalMemo");
+const modalClose=document.getElementById("modalClose");
+
+let currentKey="";
+
+/* ===== 機能 ===== */
 function updateProgress(){
   let filled=0,total=0;
   gojuon.flat().forEach(c=>{
-    if(c!==""){
+    if(c){
       total++;
-      if(localStorage.getItem("gojuon_"+c+"_author")
-        || localStorage.getItem("gojuon_"+c+"_date")
-        || localStorage.getItem("gojuon_"+c+"_img")){
-          filled++;
+      if(localStorage.getItem("gojuon_"+c+"_author")){
+        filled++;
       }
     }
   });
   progress.textContent=`制覇率：${filled} / ${total}`;
 }
 
-gojuon.forEach((row,r)=>{
-  const tr=document.createElement("tr");
-  row.forEach(char=>{
-    const td=document.createElement("td");
-    td.classList.add(colors[r%colors.length]);
+function openModal(char){
+  currentKey="gojuon_"+char;
+  modal.style.display="flex";
+  modalKana.textContent=char;
+  modalAuthor.value=localStorage.getItem(currentKey+"_author")||"";
+  modalDate.value=localStorage.getItem(currentKey+"_date")||"";
+  modalMemo.value=localStorage.getItem(currentKey+"_memo")||"";
+  modalImg.src=localStorage.getItem(currentKey+"_img")||"";
+}
 
-    if(char!==""){
-      const key="gojuon_"+char;
+function closeModal(){
+  modal.style.display="none";
+}
 
-      const kana=document.createElement("div");
-      kana.className="kana";
-      kana.textContent=char;
+/* モーダルイベント */
+modalClose.addEventListener("click",closeModal);
 
-      const author=document.createElement("input");
-      author.type="text";
-      author.placeholder="作者名";
-      author.value=localStorage.getItem(key+"_author")||"";
-
-      const date=document.createElement("input");
-      date.type="date";
-      date.value=localStorage.getItem(key+"_date")||"";
-
-      const img=document.createElement("img");
-      const savedImg=localStorage.getItem(key+"_img");
-      if(savedImg) img.src=savedImg;
-
-      const file=document.createElement("input");
-      file.type="file";
-      file.accept="image/*";
-
-      function updateCell(){
-        if(author.value||date.value||img.src){
-          td.classList.add("filled");
-        }else{
-          td.classList.remove("filled");
-        }
-        updateProgress();
-      }
-
-      author.oninput=()=>{
-        localStorage.setItem(key+"_author",author.value);
-        updateCell();
-      };
-      date.oninput=()=>{
-        localStorage.setItem(key+"_date",date.value);
-        updateCell();
-      };
-      file.onchange=()=>{
-        const f=file.files[0];
-        if(!f)return;
-        const r=new FileReader();
-        r.onload=()=>{
-          img.src=r.result;
-          localStorage.setItem(key+"_img",r.result);
-          updateCell();
-        };
-        r.readAsDataURL(f);
-      };
-
-      if(author.value||date.value||savedImg){
-        td.classList.add("filled");
-      }
-
-      td.appendChild(kana);
-      td.appendChild(author);
-      td.appendChild(date);
-      td.appendChild(img);
-      td.appendChild(file);
-    }
-    tr.appendChild(td);
-  });
-  table.appendChild(tr);
+modalAuthor.addEventListener("input",()=>{
+  localStorage.setItem(currentKey+"_author",modalAuthor.value);
+  renderTable();
+  updateProgress();
 });
 
+modalDate.addEventListener("input",()=>{
+  localStorage.setItem(currentKey+"_date",modalDate.value);
+  renderTable();
+});
+
+modalMemo.addEventListener("input",()=>{
+  localStorage.setItem(currentKey+"_memo",modalMemo.value);
+});
+
+modalFile.addEventListener("change",()=>{
+  const file=modalFile.files[0];
+  if(!file)return;
+  const reader=new FileReader();
+  reader.onload=()=>{
+    localStorage.setItem(currentKey+"_img",reader.result);
+    modalImg.src=reader.result;
+    renderTable();
+  };
+  reader.readAsDataURL(file);
+});
+
+/* ===== 表生成 ===== */
+function renderTable(){
+  table.innerHTML="";
+  gojuon.forEach((row,r)=>{
+    const tr=document.createElement("tr");
+    row.forEach(char=>{
+      const td=document.createElement("td");
+      td.classList.add(colors[r%colors.length]);
+      if(char){
+        const key="gojuon_"+char;
+
+        const kana=document.createElement("div");
+        kana.className="kana";
+        kana.textContent=char;
+
+        const author=document.createElement("input");
+        author.type="text";
+        author.placeholder="作者名";
+        author.className="author-input";
+        author.value=localStorage.getItem(key+"_author")||"";
+        author.addEventListener("input",()=>{
+          localStorage.setItem(key+"_author",author.value);
+          updateProgress();
+        });
+
+        const date=document.createElement("input");
+        date.type="date";
+        date.className="date-input";
+        date.value=localStorage.getItem(key+"_date")||"";
+        date.addEventListener("input",()=>{
+          localStorage.setItem(key+"_date",date.value);
+        });
+
+        const imgData=localStorage.getItem(key+"_img");
+        const img=document.createElement("img");
+        if(imgData) img.src=imgData;
+
+        const memoBtn=document.createElement("button");
+        memoBtn.className="memo-btn";
+        memoBtn.textContent="📖 メモ";
+        memoBtn.addEventListener("click",()=>openModal(char));
+
+        if(author.value||imgData) td.classList.add("filled");
+
+        td.appendChild(kana);
+        td.appendChild(author);
+        td.appendChild(date);
+        if(imgData) td.appendChild(img);
+        td.appendChild(memoBtn);
+      }
+      tr.appendChild(td);
+    });
+    table.appendChild(tr);
+  });
+}
+
+/* 初期化 */
+renderTable();
 updateProgress();
 </script>
 
